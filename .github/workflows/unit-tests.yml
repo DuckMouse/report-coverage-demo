@@ -1,0 +1,51 @@
+name: Angular CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push to the gh-pages branch
+      pull-requests: write # Required if you're using the PR coverage comment
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          # We must tell the cacher where the package-lock.json is
+          cache: 'npm'
+          cache-dependency-path: "package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest tests
+        run: npm run test-coverage -- --no-watch
+        
+      - name: Upload Coverage Report
+        # This makes the report available for download in GitHub
+        if: always() # Upload even if tests fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage-report
+          path: "coverage/"
+      - name: Deploy Coverage to GitHub Pages
+        # Only run this on the 'main' branch so you don't overwrite the report with PR data
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Path to the folder containing the index.html file
+          publish_dir: "coverage/"
+          # Optional: Keep the history of reports
+          keep_files: true
+
